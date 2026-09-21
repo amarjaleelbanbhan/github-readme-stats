@@ -607,9 +607,11 @@ describe("Test renderTopLanguages", () => {
 
   it("does not overlap long compact labels when card width is limited", () => {
     const longLanguages = Object.fromEntries(
-      ["VeryLongLanguageNameA", "VeryLongLanguageNameB", "VeryLongLanguageNameC"].map(
-        (name) => [name, { name, color: "#0f0", size: 100 }],
-      ),
+      [
+        "VeryLongLanguageNameA",
+        "VeryLongLanguageNameB",
+        "VeryLongLanguageNameC",
+      ].map((name) => [name, { name, color: "#0f0", size: 100 }]),
     );
 
     document.body.innerHTML = renderTopLanguages(longLanguages, {
