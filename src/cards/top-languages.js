@@ -294,6 +294,45 @@ const createCompactLangNode = ({
 };
 
 /**
+ * Fit compact-language labels into the available width without overlap.
+ *
+ * @param {Lang[]} langs Languages to display.
+ * @param {number} width Card width.
+ * @param {number} totalSize Combined language size.
+ * @param {boolean=} hideProgress Whether the percentage is hidden.
+ * @param {string=} statsFormat Stats format.
+ * @returns {{columns: number, rows: number, step: number}} Grid dimensions.
+ */
+const getCompactColumnLayout = (
+  langs,
+  width,
+  totalSize,
+  hideProgress,
+  statsFormat,
+) => {
+  const availableWidth = width - CARD_PADDING * 2;
+  const widestLabel = Math.max(
+    ...langs.map((lang) => {
+      const percentage = (lang.size / totalSize) * 100;
+      const label = hideProgress
+        ? lang.name
+        : lang.name + " " + getDisplayValue(lang.size, percentage, statsFormat);
+      return 20 + measureText(label, 11);
+    }),
+  );
+  const columnWidth = Math.max(150, Math.ceil(widestLabel) + 10);
+  const columns = Math.min(
+    langs.length,
+    Math.max(1, Math.floor(availableWidth / columnWidth)),
+  );
+  const step =
+    columns > 1
+      ? Math.floor((availableWidth - columnWidth) / (columns - 1))
+      : 0;
+  return { columns, rows: Math.ceil(langs.length / columns), step };
+};
+
+/**
  * Create compact languages text items for all programming languages.
  *
  * @param {object} props Function properties.
@@ -301,6 +340,7 @@ const createCompactLangNode = ({
  * @param {number} props.totalSize Total size of all languages.
  * @param {boolean=} props.hideProgress Whether to hide percentage.
  * @param {string=} props.statsFormat Stats format
+ * @param {number=} props.width Card width for responsive compact layout.
  * @returns {string} Programming languages SVG node.
  */
 const createLanguageTextNode = ({
@@ -308,7 +348,42 @@ const createLanguageTextNode = ({
   totalSize,
   hideProgress,
   statsFormat,
+  width,
 }) => {
+  if (width > DEFAULT_CARD_WIDTH) {
+    const { columns, step } = getCompactColumnLayout(
+      langs,
+      width,
+      totalSize,
+      hideProgress,
+      statsFormat,
+    );
+    const columnLangs = Array.from({ length: columns }, () => []);
+    langs.forEach((lang, index) => {
+      columnLangs[Math.floor((index * columns) / langs.length)].push(lang);
+    });
+
+    return columnLangs
+      .map((array, column) => {
+        const items = array.map((lang, index) =>
+          createCompactLangNode({
+            lang,
+            totalSize,
+            hideProgress,
+            statsFormat,
+            index,
+          }),
+        );
+        return (
+          '<g transform="translate(' +
+          column * step +
+          ', 0)">' +
+          flexLayout({ items, gap: 25, direction: "column" }).join("") +
+          "</g>"
+        );
+      })
+      .join("");
+  }
   const longestLang = getLongestLang(langs);
   const chunked = chunkArray(langs, langs.length / 2);
   const layouts = chunked.map((array) => {
@@ -461,6 +536,7 @@ const renderCompactLayout = (
         totalSize: totalLanguageSize,
         hideProgress,
         statsFormat,
+        width,
       })}
     </g>
   `;
@@ -860,7 +936,18 @@ const renderTopLanguages = (topLangs, options = {}) => {
     );
   } else if (layout === "compact" || hide_progress == true) {
     height =
-      calculateCompactLayoutHeight(langs.length) + (hide_progress ? -25 : 0);
+      (width > DEFAULT_CARD_WIDTH
+        ? COMPACT_LAYOUT_BASE_HEIGHT +
+          getCompactColumnLayout(
+            langs,
+            width,
+            totalLanguageSize,
+            hide_progress,
+            stats_format,
+          ).rows *
+            25
+        : calculateCompactLayoutHeight(langs.length)) +
+      (hide_progress ? -25 : 0);
 
     finalLayout = renderCompactLayout(
       langs,
