@@ -572,6 +572,73 @@ describe("Test renderTopLanguages", () => {
     );
   });
 
+  it("uses additional compact columns and rows when card_width increases", () => {
+    const sixLanguages = Object.fromEntries(
+      ["A", "B", "C", "D", "E", "F"].map((name, index) => [
+        name,
+        { name, color: "#0f0", size: 100 - index },
+      ]),
+    );
+
+    document.body.innerHTML = renderTopLanguages(sixLanguages, {
+      layout: "compact",
+      card_width: 600,
+      langs_count: 6,
+    });
+
+    const labels = queryAllByTestId(document.body, "lang-name");
+    const columns = [
+      ...new Set(
+        labels.map((node) =>
+          node.parentElement.parentElement.parentElement.getAttribute(
+            "transform",
+          ),
+        ),
+      ),
+    ];
+    expect(labels).toHaveLength(6);
+    expect(columns).toEqual([
+      "translate(0, 0)",
+      "translate(200, 0)",
+      "translate(400, 0)",
+    ]);
+    expect(document.querySelector("svg")).toHaveAttribute("height", "140");
+  });
+
+  it("does not overlap long compact labels when card width is limited", () => {
+    const longLanguages = Object.fromEntries(
+      ["VeryLongLanguageNameA", "VeryLongLanguageNameB", "VeryLongLanguageNameC"].map(
+        (name) => [name, { name, color: "#0f0", size: 100 }],
+      ),
+    );
+
+    document.body.innerHTML = renderTopLanguages(longLanguages, {
+      layout: "compact",
+      card_width: 360,
+      langs_count: 3,
+    });
+
+    const labels = queryAllByTestId(document.body, "lang-name");
+    const columns = new Set(
+      labels.map((node) =>
+        node.parentElement.parentElement.parentElement.getAttribute(
+          "transform",
+        ),
+      ),
+    );
+    expect(labels).toHaveLength(3);
+    expect([...columns]).toEqual(["translate(0, 0)"]);
+    expect(document.querySelector("svg")).toHaveAttribute("height", "165");
+  });
+
+  it("keeps default compact layout dimensions unchanged", () => {
+    document.body.innerHTML = renderTopLanguages(langs, {
+      layout: "compact",
+    });
+    expect(document.querySelector("svg")).toHaveAttribute("width", "300");
+    expect(document.querySelector("svg")).toHaveAttribute("height", "140");
+  });
+
   it("should render with layout donut", () => {
     document.body.innerHTML = renderTopLanguages(langs, { layout: "donut" });
 
